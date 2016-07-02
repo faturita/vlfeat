@@ -1985,7 +1985,9 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   /* synchronize gradient buffer */
   update_gradient (f) ;
 
-  /* VL_PRINTF("W = %d ; magnif = %g ; SBP = %g\n", W,magnif,SBP) ; */
+  VL_PRINTF("W = %d ; magnif = %g ; SBP = %g\n", W,magnif,SBP) ;
+
+  VL_PRINTF("NBP = %d ; NBP = %d ; NBO = %d\n", NBP,NBP,NBO) ;
 
   /* clear descriptor */
   memset (descr, 0, sizeof(vl_sift_pix) * NBO*NBP*NBP) ;
@@ -2013,6 +2015,8 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       vl_sift_pix mod   = *( pt + dxi*xo + dyi*yo + 0 ) ;
       vl_sift_pix angle = *( pt + dxi*xo + dyi*yo + 1 ) ;
       vl_sift_pix theta = vl_mod_2pi_f (angle - angle0) ;
+
+      VL_PRINTF("Mod = %10.6f ; Angle = %10.6f ; Theta = %10.6f\n", mod,angle,theta) ;
 
       /* fractional displacement */
       vl_sift_pix dx = xi + dxi - x;
@@ -2059,7 +2063,10 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
                 * vl_abs_f (1 - dbiny - rbiny)
                 * vl_abs_f (1 - dbint - rbint) ;
 
-              atd(binx+dbinx, biny+dbiny, (bint+dbint) % NBO) += weight ;
+                VL_PRINTF("dbinx = %d ; dbiny = %d ; dbint = %d\n", dbinx,dbiny,dbint) ;
+
+              //atd(binx+dbinx, biny+dbiny, (bint+dbint) % NBO) += weight ;
+              atd(binx+dbinx, biny+dbiny, (bint+dbint) % NBO) += 1 ;
             }
           }
         }
@@ -2067,8 +2074,15 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
     }
   }
 
+  for(bin = 0; bin < NBO*NBP*NBP ; ++ bin) {
+    if (bin%16==0) VL_PRINTF("\n");
+    if (bin%8 ==0) VL_PRINTF("|");
+    VL_PRINTF("%10.8f\t", descr[bin]);
+    //descr [bin] = 0.5;
+  }
+
   /* Standard SIFT descriptors are normalized, truncated and normalized again */
-  if(1) {
+  if(0) {
 
     /* Normalize the histogram to L2 unit length. */
     vl_sift_pix norm = normalize_histogram (descr, descr + NBO*NBP*NBP) ;

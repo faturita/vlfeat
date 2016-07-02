@@ -386,10 +386,13 @@ mexFunction(int nout, mxArray *out[],
             (filt, angles, k) ;
         }
 
+        // VL SIFT allows you to use more than one descriptor orientation.
         /* For each orientation ................................... */
         for (q = 0 ; q < nangles ; ++q) {
           vl_sift_pix  buf [128] ;
           vl_sift_pix rbuf [128] ;
+
+          mexPrintf("vl_sift: Descriptor Orientation Angle in Deg: %6.0f\n", angles[q]);
 
           /* compute descriptor (if necessary) */
           if (nout > 1) {
@@ -426,7 +429,8 @@ mexFunction(int nout, mxArray *out[],
               }
             } else {
               for (j = 0 ; j < 128 ; ++j) {
-                float x = 512.0F * rbuf [j] ;
+                //float x = 512.0F * rbuf [j] ;
+                float x = 1.0F * rbuf[j];
                 ((float*)descr) [128 * nframes + j] = x ;
               }
             }
