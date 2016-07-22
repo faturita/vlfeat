@@ -66,6 +66,8 @@ vl_rodrigues(double* R_pt, double* dR_pt, const double* om_pt)
     R(1,0) = 0.0 ; R(1,1) = 1.0 ; R(1,2) = 0.0 ;
     R(2,0) = 0.0 ; R(2,1) = 0.0 ; R(2,2) = 1.0 ;
 
+	
+	
     if(dR_pt) {
       DR(0,0) = 0  ; DR(0,1) = 0   ; DR(0,2) = 0 ;
       DR(1,0) = 0  ; DR(1,1) = 0   ; DR(1,2) = 1 ;

@@ -1247,7 +1247,7 @@ vl_sift_detect (VlSiftFilt * f)
           k = f->keys + (f->nkeys ++) ;
 
           k-> ix = x ;
-          k-> iy = y ;
+          k-> iy = y ; 
           k-> is = s ;
         }
         pt += 1 ;
@@ -2016,9 +2016,9 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       vl_sift_pix angle = *( pt + dxi*xo + dyi*yo + 1 ) ;
       vl_sift_pix theta = vl_mod_2pi_f (angle - angle0) ;
 
-      VL_PRINTF("Mod = %10.6f ; Angle = %10.6f ; Theta = %10.6f\n", mod,angle,theta) ;
-
+      //VL_PRINTF("Mod = %10.6f ; Angle = %10.6f ; Theta = %10.6f\n", mod,angle,theta);
       /* fractional displacement */
+
       vl_sift_pix dx = xi + dxi - x;
       vl_sift_pix dy = yi + dyi - y;
 

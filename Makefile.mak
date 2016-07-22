@@ -26,7 +26,7 @@
 
 VER = 0.9.20
 ARCH = win64
-DEBUG = no
+DEBUG = yes
 BRANCH = v$(VER)-$(ARCH)
 MSVSVER =
 MSVCROOT = $(VCINSTALLDIR)
@@ -65,7 +65,7 @@ LFLAGS = /MACHINE:X86 \
 !elseif "$(ARCH)" == "win64"
 !message === COMPILING FOR 64-BIT
 
-MATLABROOT = C:\Program Files\MATLAB\R2010b
+MATLABROOT = C:\MATLAB\R2014a
 MEX = "$(MATLABROOT)\bin\mex.bat"
 MEXOPT = "$(MATLABROOT)\bin\win64\mexopts\msvc$(MSVSVER)opts.bat"
 MEXEXT = mexw64
