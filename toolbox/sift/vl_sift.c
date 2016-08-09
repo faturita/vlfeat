@@ -429,8 +429,7 @@ mexFunction(int nout, mxArray *out[],
               }
             } else {
               for (j = 0 ; j < 128 ; ++j) {
-                //float x = 512.0F * rbuf [j] ;
-                float x = 1.0F * rbuf[j];
+                float x = 512.0F * rbuf [j] ;
                 ((float*)descr) [128 * nframes + j] = x ;
               }
             }

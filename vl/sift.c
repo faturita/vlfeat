@@ -1247,7 +1247,7 @@ vl_sift_detect (VlSiftFilt * f)
           k = f->keys + (f->nkeys ++) ;
 
           k-> ix = x ;
-          k-> iy = y ; 
+          k-> iy = y ;
           k-> is = s ;
         }
         pt += 1 ;
@@ -1985,9 +1985,9 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   /* synchronize gradient buffer */
   update_gradient (f) ;
 
-  VL_PRINTF("W = %d ; magnif = %g ; SBP = %g\n", W,magnif,SBP) ;
+  //VL_PRINTF("W = %d ; magnif = %g ; SBP = %g\n", W,magnif,SBP) ;
 
-  VL_PRINTF("NBP = %d ; NBP = %d ; NBO = %d\n", NBP,NBP,NBO) ;
+  //VL_PRINTF("NBP = %d ; NBP = %d ; NBO = %d\n", NBP,NBP,NBO) ;
 
   /* clear descriptor */
   memset (descr, 0, sizeof(vl_sift_pix) * NBO*NBP*NBP) ;
@@ -2063,10 +2063,10 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
                 * vl_abs_f (1 - dbiny - rbiny)
                 * vl_abs_f (1 - dbint - rbint) ;
 
-                VL_PRINTF("dbinx = %d ; dbiny = %d ; dbint = %d\n", dbinx,dbiny,dbint) ;
+                //VL_PRINTF("dbinx = %d ; dbiny = %d ; dbint = %d\n", dbinx,dbiny,dbint) ;
 
-              //atd(binx+dbinx, biny+dbiny, (bint+dbint) % NBO) += weight ;
-              atd(binx+dbinx, biny+dbiny, (bint+dbint) % NBO) += 1 ;
+              atd(binx+dbinx, biny+dbiny, (bint+dbint) % NBO) += weight ;
+              //atd(binx+dbinx, biny+dbiny, (bint+dbint) % NBO) += 1 ;
             }
           }
         }
@@ -2077,12 +2077,12 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   for(bin = 0; bin < NBO*NBP*NBP ; ++ bin) {
     if (bin%16==0) VL_PRINTF("\n");
     if (bin%8 ==0) VL_PRINTF("|");
-    VL_PRINTF("%10.8f\t", descr[bin]);
+    //VL_PRINTF("%10.8f\t", descr[bin]);
     //descr [bin] = 0.5;
   }
 
   /* Standard SIFT descriptors are normalized, truncated and normalized again */
-  if(0) {
+  if(1) {
 
     /* Normalize the histogram to L2 unit length. */
     vl_sift_pix norm = normalize_histogram (descr, descr + NBO*NBP*NBP) ;
