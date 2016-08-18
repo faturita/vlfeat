@@ -1947,22 +1947,25 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
 
   int          w           = f-> octave_width ;
   int          h           = f-> octave_height ;
-  int const    xo          = 2 ;         /* x-stride */
-  int const    yo          = 2 * w ;     /* y-stride */
-  int const    so          = 2 * w * h ; /* s-stride */
+  int const    xo          = 2 ;         /* x-stride Array step */
+  int const    yo          = 2 * w ;     /* y-stride Array step */
+  int const    so          = 2 * w * h ; /* s-stride Array step */
   double       x           = k-> x     / xper ;
   double       y           = k-> y     / xper ;
   double       sigma       = k-> sigma / xper ;
 
   int          xi          = (int) (x + 0.5) ;
   int          yi          = (int) (y + 0.5) ;
-  int          si          = k-> is ;
+  int          si          = k-> is ;         /* s coordinate */
 
   double const st0         = sin (angle0) ;
   double const ct0         = cos (angle0) ;
   double const SBP         = magnif * sigma + VL_EPSILON_D ;
   int    const W           = floor
     (sqrt(2.0) * SBP * (NBP + 1) / 2.0 + 0.5) ;
+
+  /* NBP x NBP number of boxes per descriprot */
+  /* NBO number of orientations */
 
   int const binto = 1 ;          /* bin theta-stride */
   int const binyo = NBO * NBP ;  /* bin y-stride */
@@ -1985,9 +1988,14 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   /* synchronize gradient buffer */
   update_gradient (f) ;
 
-  //VL_PRINTF("W = %d ; magnif = %g ; SBP = %g\n", W,magnif,SBP) ;
+  VL_PRINTF("Descritor center x = %10.5f, y = %10.5f, sigma=%10.5f \n", x,y,sigma);
+  VL_PRINTF("xper = %10.5f ; Octave w = %d ; Octave h = %d\n", xper,w,h) ;
 
-  //VL_PRINTF("NBP = %d ; NBP = %d ; NBO = %d\n", NBP,NBP,NBO) ;
+  VL_PRINTF("Integer Bin Centers xi, %d, yi=%i, si=%d \n", xi, yi, si);
+
+  VL_PRINTF("W = %d ; magnif = %g ; SBP = %g\n", W,magnif,SBP) ;
+
+  VL_PRINTF("NBP = %d ; NBP = %d ; NBO = %d\n", NBP,NBP,NBO) ;
 
   /* clear descriptor */
   memset (descr, 0, sizeof(vl_sift_pix) * NBO*NBP*NBP) ;
@@ -2004,26 +2012,37 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   /*
    * Process pixels in the intersection of the image rectangle
    * (1,1)-(M-1,N-1) and the keypoint bounding box.
+   *  This goes from -W to W on each spatial direction.
+   * W = sqrt(2) * (SBP = m * sigma) * ((NBP = 4)+1)
+   *     -------------------------------------------   + 0.5
+   *                     2.0
+   * W = Fl[W]
+   * for sigma=1, it goes from -11 to 11 on each direction, 529 total
    */
+  int counter = 0;
   for(dyi =  VL_MAX (- W, 1 - yi    ) ;
       dyi <= VL_MIN (+ W, h - yi - 2) ; ++ dyi) {
 
     for(dxi =  VL_MAX (- W, 1 - xi    ) ;
         dxi <= VL_MIN (+ W, w - xi - 2) ; ++ dxi) {
 
+      VL_PRINTF ("dxi,dyi = %d, %d \n", dxi, dyi);
+      counter++;
       /* retrieve */
       vl_sift_pix mod   = *( pt + dxi*xo + dyi*yo + 0 ) ;
       vl_sift_pix angle = *( pt + dxi*xo + dyi*yo + 1 ) ;
       vl_sift_pix theta = vl_mod_2pi_f (angle - angle0) ;
 
       //VL_PRINTF("Mod = %10.6f ; Angle = %10.6f ; Theta = %10.6f\n", mod,angle,theta);
-      /* fractional displacement */
+      /* fractional displacement, e.g. got back to double */
 
       vl_sift_pix dx = xi + dxi - x;
       vl_sift_pix dy = yi + dyi - y;
 
       /* get the displacement normalized w.r.t. the keypoint
          orientation and extension */
+      /* wrt, with respect to */
+      /* Rotation according to the scale (SBP) and descriptor angle) */
       vl_sift_pix nx = ( ct0 * dx + st0 * dy) / SBP ;
       vl_sift_pix ny = (-st0 * dx + ct0 * dy) / SBP ;
       vl_sift_pix nt = NBO * theta / (2 * VL_PI) ;
@@ -2047,6 +2066,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       int         dbinx ;
       int         dbiny ;
       int         dbint ;
+
 
       /* Distribute the current sample into the 8 adjacent bins*/
       for(dbinx = 0 ; dbinx < 2 ; ++dbinx) {
@@ -2074,9 +2094,11 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
     }
   }
 
+  VL_PRINTF  ("Counter = %d\n", counter);
+
   for(bin = 0; bin < NBO*NBP*NBP ; ++ bin) {
-    if (bin%16==0) VL_PRINTF("\n");
-    if (bin%8 ==0) VL_PRINTF("|");
+    //if (bin%16==0) VL_PRINTF("\n");
+    //if (bin%8 ==0) VL_PRINTF("|");
     //VL_PRINTF("%10.8f\t", descr[bin]);
     //descr [bin] = 0.5;
   }
