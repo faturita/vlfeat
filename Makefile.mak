@@ -66,7 +66,6 @@ LFLAGS = /MACHINE:X86 \
 !message === COMPILING FOR 64-BIT
 
 MATLABROOT = C:\MATLAB\R2014a
-MATLABROOT = D:\MATLAB\R2014a
 MEX = "$(MATLABROOT)\bin\mex.bat"
 MEXOPT = "$(MATLABROOT)\bin\win64\mexopts\msvc$(MSVSVER)opts.bat"
 MEXEXT = mexw64
