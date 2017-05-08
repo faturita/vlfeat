@@ -78,10 +78,13 @@ if nargin > 1
   end
 
   if size(f,1) == 5
-    assert(false) ;
-    c = cos(f(4,:)) ;
-    s = sin(f(4,:)) ;
-    f(3:6,:) = bsxfun(@times, f(3,:), [c ; s ; -s ; c]) ;
+    %assert(false) ;
+    c = cos(f(5,:)) ;
+    s = sin(f(5,:)) ;
+    ft = f;
+    ft(3:4,:) = bsxfun(@times, f(3,:), [c ; s]) ;
+    ft(5:6,:) = bsxfun(@times, f(4,:), [-s; c]);
+    f = ft;
   end
 
   if(~isempty(f) & size(f,2) ~= size(d,2))
@@ -96,6 +99,7 @@ K = size(d,2) ;
 if nargin < 2 | isempty(f)
   f = repmat([0;0;1;0;0;1],1,K) ;
 end
+
 
 % --------------------------------------------------------------------
 %                                                           Do the job

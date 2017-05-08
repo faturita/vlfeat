@@ -141,6 +141,7 @@ mexFunction(int nout, mxArray *out[],
   int                next = IN_END ;
   mxArray const     *optarg ;
 
+  // incoming image (vl_sift_pix is a float typedef)
   vl_sift_pix const *data ;
   int                M, N ;
 
@@ -177,9 +178,14 @@ mexFunction(int nout, mxArray *out[],
     mexErrMsgTxt("I must be a matrix of class SINGLE") ;
   }
 
+  // Incoming image....M is height, N is width
   data = (vl_sift_pix*) mxGetData (in[IN_I]) ;
   M    = mxGetM (in[IN_I]) ;
   N    = mxGetN (in[IN_I]) ;
+
+  if (verbose)
+    mexPrintf("vl_sift: Image size %d, %d, %d\n", sizeof(data), M,N);
+
 
   while ((opt = vlmxNextOption (in, nin, options, &next, &optarg)) >= 0) {
     switch (opt) {
@@ -238,14 +244,14 @@ mexFunction(int nout, mxArray *out[],
       break ;
 
     case opt_frames :
-      if (!vlmxIsMatrix(optarg, 4, -1)) {
+      if (!vlmxIsMatrix(optarg, 5, -1)) {
         mexErrMsgTxt("'Frames' must be a 4 x N matrix.") ;
       }
       ikeys_array = mxDuplicateArray (optarg) ;
       nikeys      = mxGetN (optarg) ;
       ikeys       = mxGetPr (ikeys_array) ;
       if (! check_sorted (ikeys, nikeys)) {
-        qsort (ikeys, nikeys, 4 * sizeof(double), korder) ;
+        qsort (ikeys, nikeys, 5 * sizeof(double), korder) ;
       }
       break ;
 
@@ -273,6 +279,11 @@ mexFunction(int nout, mxArray *out[],
     int                nframes = 0, reserved = 0, i,j,q ;
 
     /* create a filter to process the image */
+    // @param width    image width.
+    // @param height   image height.
+    // @param noctaves number of octaves.
+    // @param nlevels  number of levels per octave.
+    // @param o_min    first octave index.
     filt = vl_sift_new (M, N, O, S, o_min) ;
 
     if (peak_thresh >= 0) vl_sift_set_peak_thresh (filt, peak_thresh) ;
@@ -337,6 +348,8 @@ mexFunction(int nout, mxArray *out[],
                   vl_sift_get_octave_index (filt));
       }
 
+      int framelength = 4;
+
       /* Run detector ............................................. */
       if (nikeys < 0) {
         vl_sift_detect (filt) ;
@@ -350,6 +363,7 @@ mexFunction(int nout, mxArray *out[],
         }
       } else {
         nkeys = nikeys ;
+        framelength = 5;
       }
 
       /* For each keypoint ........................................ */
@@ -357,14 +371,29 @@ mexFunction(int nout, mxArray *out[],
         double                angles [4] ;
         int                   nangles ;
         VlSiftKeypoint        ik ;
-        VlSiftKeypoint const *k ;
+        VlSiftKeypoint        *k ;
 
         /* Obtain keypoint orientations ........................... */
         if (nikeys >= 0) {
+          // Detection was not executed.
           vl_sift_keypoint_init (filt, &ik,
-                                 ikeys [4 * i + 1] - 1,
-                                 ikeys [4 * i + 0] - 1,
-                                 ikeys [4 * i + 2]) ;
+                                 ikeys [framelength * i + 1] - 1,
+                                 ikeys [framelength * i + 0] - 1,
+                                 ikeys [framelength * i + 2]) ;
+
+          if (framelength == 5) {
+            ik.sigmax =    ikeys [framelength * i + 2];
+            ik.sigmay =    ikeys [framelength * i + 3];
+          } else {
+            ik.sigmax = ik.sigma;
+            ik.sigmay = ik.sigma;
+          }
+
+          if (verbose>0) {
+            mexPrintf("vl_sift: Sigma values: %10.8f,%10.8f\n", ik.sigmax, ik.sigmay);
+
+            mexPrintf("vl_sift: Keypoint octave vs current octave: %d, %d\n", ik.o, vl_sift_get_octave_index (filt) );
+          }
 
           if (ik.o != vl_sift_get_octave_index (filt)) {
             break ;
@@ -377,13 +406,18 @@ mexFunction(int nout, mxArray *out[],
             nangles = vl_sift_calc_keypoint_orientations
               (filt, angles, k) ;
           } else {
-            angles [0] = VL_PI / 2 - ikeys [4 * i + 3] ;
+            // Only one angle, which was the one provided in the corresponding key.
+            angles [0] = VL_PI / 2 - ikeys [framelength * i + 4] ;
             nangles    = 1 ;
           }
         } else {
           k = keys + i ;
           nangles = vl_sift_calc_keypoint_orientations
             (filt, angles, k) ;
+
+          k->sigmax = k->sigma;
+          k->sigmay = k->sigma;
+
         }
 
         // VL SIFT allows you to use more than one descriptor orientation.
@@ -392,10 +426,13 @@ mexFunction(int nout, mxArray *out[],
           vl_sift_pix  buf [128] ;
           vl_sift_pix rbuf [128] ;
 
-          mexPrintf("vl_sift: Descriptor Orientation Angle in Deg: %6.0f\n", angles[q]);
+          if (verbose>0) {
+            mexPrintf("vl_sift: Descriptor Orientation Angle in Deg: %6.0f\n", angles[q]);
+          }
 
           /* compute descriptor (if necessary) */
           if (nout > 1) {
+            // The descriptor per se is calculated here.
             vl_sift_calc_keypoint_descriptor (filt, buf, k, angles [q]) ;
             transpose_descriptor (rbuf, buf) ;
           }
@@ -403,7 +440,7 @@ mexFunction(int nout, mxArray *out[],
           /* make enough room for all these keypoints and more */
           if (reserved < nframes + 1) {
             reserved += 2 * nkeys ;
-            frames = mxRealloc (frames, 4 * sizeof(double) * reserved) ;
+            frames = mxRealloc (frames, 5 * sizeof(double) * reserved) ;
             if (nout > 1) {
               if (! floatDescriptors) {
                 descr  = mxRealloc (descr,  128 * sizeof(vl_uint8) * reserved) ;
@@ -415,10 +452,11 @@ mexFunction(int nout, mxArray *out[],
 
           /* Save back with MATLAB conventions. Notice tha the input
            * image was the transpose of the actual image. */
-          frames [4 * nframes + 0] = k -> y + 1 ;
-          frames [4 * nframes + 1] = k -> x + 1 ;
-          frames [4 * nframes + 2] = k -> sigma ;
-          frames [4 * nframes + 3] = VL_PI / 2 - angles [q] ;
+          frames [5 * nframes + 0] = k -> y + 1 ;
+          frames [5 * nframes + 1] = k -> x + 1 ;
+          frames [5 * nframes + 2] = k -> sigmax ;
+          frames [5 * nframes + 3] = k -> sigmay ;
+          frames [5 * nframes + 4] = VL_PI / 2 - angles [q] ;
 
           if (nout > 1) {
             if (! floatDescriptors) {
@@ -458,7 +496,7 @@ mexFunction(int nout, mxArray *out[],
         (2, dims, mxDOUBLE_CLASS, mxREAL) ;
 
       /* set array content to be the frames buffer */
-      dims [0] = 4 ;
+      dims [0] = 5 ;
       dims [1] = nframes ;
       mxSetPr         (out[OUT_FRAMES], frames) ;
       mxSetDimensions (out[OUT_FRAMES], dims, 2) ;
