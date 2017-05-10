@@ -1995,6 +1995,15 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   vl_sift_pix const *pt ;
   vl_sift_pix       *dpt ;
 
+  FILE *pf1, *pf;
+  int oky, kkx;
+  int minx=0, miny=0;
+  int maxx=0, maxy=0;
+  int histsums = 0;
+  int counter = 0;
+  float total = 0;
+  int patch=0;
+
   /* check bounds */
   if(k->o  != f->o_cur        ||
      xi    <  0               ||
@@ -2026,18 +2035,17 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   dpt = descr + (NBP/2) * binyo + (NBP/2) * binxo ;
 
 
-  FILE *pf1 = fopen("size.txt","w");
+  pf1 = fopen("size.txt","w");
 
   fprintf(pf1,"%d %d",w,h);
 
   fclose(pf1);
 
 
+  pf = fopen("grads.txt","w");
 
-  FILE *pf = fopen("grads.txt","w");
-
-  for(int oky=0;oky<h;oky++) {
-    for (int kkx=0;kkx<w;kkx++) {
+  for(oky=0;oky<h;oky++) {
+    for (kkx=0;kkx<w;kkx++) {
       vl_sift_pix mod   = *( f->grad + kkx*xo + oky*yo + 0 ) ;
       vl_sift_pix angle = *( f->grad + kkx*xo + oky*yo + 1 ) ;
       vl_sift_pix theta = vl_mod_2pi_f (angle - angle0) ;
@@ -2068,27 +2076,24 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
    * (which is sigma * m * NBP, -12 to 12)
    */
 
+  minx=0; miny=0;
+  maxx=0; maxy=0;
 
-  int minx=0, miny=0;
-  int maxx=0, maxy=0;
 
+  histsums = 0;
+  counter = 0;
 
-  int histsums = 0;
-  int counter = 0;
   for(dyi =  VL_MAX (- Wy, 1 - yi    ) ;
       dyi <= VL_MIN (+ Wy, h - yi - 2) ; ++ dyi) {
 
     for(dxi =  VL_MAX (- Wx, 1 - xi    ) ;
         dxi <= VL_MIN (+ Wx, w - xi - 2) ; ++ dxi) {
 
-      counter++;
-
       /* retrieve */
       vl_sift_pix mod   = *( pt + dxi*xo + dyi*yo + 0 ) ;
       vl_sift_pix angle = *( pt + dxi*xo + dyi*yo + 1 ) ;
       vl_sift_pix theta = vl_mod_2pi_f (angle - angle0) ;
 
-      if (verbose) VL_PRINTF("x,y = (%3d,%3d) Mod = %10.6f ; Angle = %10.6f ; Theta = %10.6f", xi+dxi, yi+dyi,mod ,angle* 180.0/VL_PI,theta* 180.0/VL_PI);
       /* fractional displacement, e.g. got back to double */
 
       // xi, yi center (real center of the discrete image), x, y decimal center.
@@ -2122,6 +2127,10 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       int         dbinx ;
       int         dbiny ;
       int         dbint ;
+
+      counter++;
+      if (verbose) VL_PRINTF("x,y = (%3d,%3d) Mod = %10.6f ; Angle = %10.6f ; Theta = %10.6f", xi+dxi, yi+dyi,mod ,angle* 180.0/VL_PI,theta* 180.0/VL_PI);
+
 
       if (verbose) VL_PRINTF("\t");
       /* Distribute the current sample into the 8 adjacent bins*/
@@ -2169,9 +2178,9 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
 
   if (verbose) VL_PRINTF  ("Counter = %d\n", counter);
 
-  float total = 0;
+  total = 0;
   for(bin = 0; bin < NBO ; ++ bin) {
-    for(int patch=0; patch < NBP * NBP; patch++) {
+    for(patch=0; patch < NBP * NBP; patch++) {
       if (bin%8 ==0) if (verbose) VL_PRINTF("");
       if (verbose) VL_PRINTF("[%d]%6.2f\t", patch*NBO+bin,descr[patch*NBO+bin]);
       //descr [bin] = 0.5;

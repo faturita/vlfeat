@@ -245,7 +245,7 @@ mexFunction(int nout, mxArray *out[],
 
     case opt_frames :
       if (!vlmxIsMatrix(optarg, 5, -1)) {
-        mexErrMsgTxt("'Frames' must be a 4 x N matrix.") ;
+        mexErrMsgTxt("'Frames' must be a 5 x N matrix.") ;
       }
       ikeys_array = mxDuplicateArray (optarg) ;
       nikeys      = mxGetN (optarg) ;
@@ -327,6 +327,7 @@ mexFunction(int nout, mxArray *out[],
       int                   err ;
       VlSiftKeypoint const *keys  = 0 ;
       int                   nkeys = 0 ;
+      int                   framelength = 4;
 
       if (verbose) {
         mexPrintf ("vl_sift: processing octave %d\n",
@@ -348,7 +349,6 @@ mexFunction(int nout, mxArray *out[],
                   vl_sift_get_octave_index (filt));
       }
 
-      int framelength = 4;
 
       /* Run detector ............................................. */
       if (nikeys < 0) {
