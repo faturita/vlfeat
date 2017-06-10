@@ -677,7 +677,9 @@ double expn_tab [EXPN_SZ+1] ; /**< ::fast_expn table      @internal */
 
 #define log2(x) (log(x)/VL_LOG_OF_2)
 
-#define verbose 0
+int verbose=0;
+#define smoothfirstoctave 0
+#define avoidgaussianweighting 1
 
 /** ------------------------------------------------------------------
  ** @internal
@@ -852,6 +854,11 @@ copy_and_downsample
   }
 }
 
+void setverbose(int iverbose)
+{
+  verbose = iverbose;
+}
+
 /** ------------------------------------------------------------------
  ** @brief Create a new SIFT filter
  **
@@ -870,7 +877,6 @@ copy_and_downsample
  ** @return the new SIFT filter.
  ** @sa ::vl_sift_delete().
  **/
-
 VL_EXPORT
 VlSiftFilt *
 vl_sift_new (int width, int height,
@@ -882,6 +888,8 @@ vl_sift_new (int width, int height,
   int w   = VL_SHIFT_LEFT (width,  -o_min) ;
   int h   = VL_SHIFT_LEFT (height, -o_min) ;
   int nel = w * h ;
+
+
 
   /* negative value O => calculate max. value */
   if (noctaves < 0) {
@@ -1051,7 +1059,7 @@ vl_sift_process_first_octave (VlSiftFilt *f, vl_sift_pix const *im)
   sa = sigma0 * pow (sigmak,   s_min) ;
   sb = sigman * pow (2.0,    - o_min) ;
 
-  if (sa > sb) {
+  if (sa > sb && smoothfirstoctave) {
     double sd = sqrt (sa*sa - sb*sb) ;
     _vl_sift_smooth (f, octave, temp, octave, w, h, sd) ;
   }
@@ -1995,7 +2003,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   vl_sift_pix const *pt ;
   vl_sift_pix       *dpt ;
 
-  FILE *pf1, *pf;
+  FILE  *pf;
   int oky, kkx;
   int minx=0, miny=0;
   int maxx=0, maxy=0;
@@ -2019,7 +2027,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
 
   if (verbose) VL_PRINTF("Descritor center x = %10.5f, y = %10.5f, sigma=%10.5f \n", x,y,sigmax);
   if (verbose) VL_PRINTF("xper = %10.5f ; Octave w = %d ; Octave h = %d\n", xper,w,h) ;
-  if (verbose) VL_PRINTF("Integer Bin Centers xi, %d, yi=%i, si=%d \n", xi, yi, si);
+  if (verbose) VL_PRINTF("Integer Bin Centers xi, %d, yi=%i, si=%d St0 = %10.4f Ct0 = %10.4f\n", xi, yi, si, st0, ct0);
   if (verbose) VL_PRINTF("Wx = %d ; Wy = %d ; magnif = %g ; SBPx = %g; SBPy = %g \n", Wx,Wy,magnif,SBPx, SBPy) ;
   if (verbose) VL_PRINTF("NBP = %d ; NBP = %d ; NBO = %d\n", NBP,NBP,NBO) ;
 
@@ -2035,26 +2043,22 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   dpt = descr + (NBP/2) * binyo + (NBP/2) * binxo ;
 
 
-  pf1 = fopen("size.txt","w");
+  if (verbose>0) {
+    pf = fopen("grads.txt","w");
+    fprintf(pf,"%d %d\n",w,h);
+    for(oky=0;oky<h;oky++) {
+      for (kkx=0;kkx<w;kkx++) {
+        vl_sift_pix mod   = *( f->grad + kkx*xo + oky*yo + 0 ) ;
+        vl_sift_pix angle = *( f->grad + kkx*xo + oky*yo + 1 ) ;
+        vl_sift_pix theta = vl_mod_2pi_f (angle - angle0) ;
 
-  fprintf(pf1,"%d %d",w,h);
-
-  fclose(pf1);
-
-
-  pf = fopen("grads.txt","w");
-
-  for(oky=0;oky<h;oky++) {
-    for (kkx=0;kkx<w;kkx++) {
-      vl_sift_pix mod   = *( f->grad + kkx*xo + oky*yo + 0 ) ;
-      vl_sift_pix angle = *( f->grad + kkx*xo + oky*yo + 1 ) ;
-      vl_sift_pix theta = vl_mod_2pi_f (angle - angle0) ;
-
-      fprintf(pf,"%d %d %6.4f %6.4f\n",kkx, oky,mod,theta);
+        fprintf(pf,"%d %d %6.4f %6.4f\n",kkx, oky,mod,theta);
+      }
     }
+
+    fclose(pf);
   }
 
-  fclose(pf);
 
   /** dpt is the descriptor's pointer so this macro is accessing each position
       according to the size of orientations (binto), y (binyo) and x (binxo)
@@ -2073,7 +2077,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
    *                     2.0
    * W = Fl[W]
    * for sigma=1, it goes from -11 to 11 on each direction, 529(23*23) total
-   * (which is sigma * m * NBP, -12 to 12)
+   * (which is 2W)
    */
 
   minx=0; miny=0;
@@ -2082,6 +2086,9 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
 
   histsums = 0;
   counter = 0;
+
+  int dysupport = VL_MIN (+ Wy, h - yi - 2) - VL_MAX (- Wy, 1 - yi    ) ;
+  int dxsupport = VL_MIN (+ Wx, w - xi - 2) - VL_MAX (- Wx, 1 - xi    ) ;
 
   for(dyi =  VL_MAX (- Wy, 1 - yi    ) ;
       dyi <= VL_MIN (+ Wy, h - yi - 2) ; ++ dyi) {
@@ -2104,8 +2111,14 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
          orientation and extension */
       /* wrt, with respect to */
       /* Rotation according to the scale (SBP) and descriptor angle) */
-      vl_sift_pix nx = ( ct0 * dx + st0 * dy) / SBPx ; // OJO
-      vl_sift_pix ny = (-st0 * dx + ct0 * dy) / SBPy ;
+      // Standard orientation st0 is 1 and ct0 is zero.ceil((147+1)*0.1304)
+      //vl_sift_pix nx = ( ct0 * dx + st0 * dy) / SBPy ; // OJO
+      //vl_sift_pix ny = (-st0 * dx + ct0 * dy) / SBPx ;
+
+      vl_sift_pix nx = ( ct0 * dx + st0 * dy) / vl_ceil_f(0.1304*(dysupport+1)) ; // OJO
+      vl_sift_pix ny = (-st0 * dx + ct0 * dy) / vl_ceil_f(0.1304*(dxsupport+1)) ;
+
+
       vl_sift_pix nt = NBO * theta / (2 * VL_PI) ;
 
       /* Get the Gaussian weight of the sample. The Gaussian window
@@ -2115,6 +2128,15 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       vl_sift_pix const wsigma = f->windowSize ;
       vl_sift_pix win = fast_expn
         ((nx*nx + ny*ny)/(2.0 * wsigma * wsigma)) ;
+
+      if (verbose) VL_PRINTF("(x,y,dxi,dyi,nx,ny) = (%3d,%3d,%3d,%3d,%10.6f,%10.6f)",dxsupport,dysupport, dxi,dyi,nx,ny);
+
+
+
+      if (avoidgaussianweighting)
+      {
+        win = 1;
+      }
 
       /* This single sample will be distributed in 8 adjacent bins.
          We start from the ``lower-left'' bin. */
@@ -2127,28 +2149,57 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       int         dbinx ;
       int         dbiny ;
       int         dbint ;
+      int a,b,c,d,e;
 
       counter++;
       if (verbose) VL_PRINTF("x,y = (%3d,%3d) Mod = %10.6f ; Angle = %10.6f ; Theta = %10.6f", xi+dxi, yi+dyi,mod ,angle* 180.0/VL_PI,theta* 180.0/VL_PI);
 
 
+      if (1)
+      {
+        a = (int)(2.0*Wy/4.0+0.5);
+        b = (int)(2.0*Wx/4.0+0.5);
+
+        c = (dyi+Wy)/a;
+        d = (dxi+Wx)/b;
+
+        e= ((int)(theta * 180.0/VL_PI + 0.5))/45;
+
+        if (e>7) e=0;
+
+        //if (verbose) VL_PRINTF("\ndyi = %3d, dxi = %3d, e = %d idx = %d",c,d,e,c*binxo + d*binyo+e);
+
+        if (mod>1)
+        {
+          //descr[c*binxo + d*binyo+e] += mod;
+        }
+      }
+
+
+      //if (verbose) VL_PRINTF(" idx = %d", c*binxo + d*binyo+e);
+
+      if (verbose) VL_PRINTF(" dyi = %3d, dxi = %3d, e = %d idx = %d ",c,d,e,c*binxo + d*binyo+e);
+
       if (verbose) VL_PRINTF("\t");
       /* Distribute the current sample into the 8 adjacent bins*/
-      for(dbinx = 0 ; dbinx < 2 ; ++dbinx) {
+      for(dbinx = 0 ; dbinx < 2  ; ++dbinx) {
         for(dbiny = 0 ; dbiny < 2 ; ++dbiny) {
           for(dbint = 0 ; dbint < 2 ; ++dbint) {
+
+            //if (verbose) VL_PRINTF(" %3d,%3d,%3d,%3d ",binx,dbinx,biny,dbiny);
+
 
             if (binx + dbinx >= - (NBP/2) &&
                 binx + dbinx <    (NBP/2) &&
                 biny + dbiny >= - (NBP/2) &&
                 biny + dbiny <    (NBP/2) ) {
-              vl_sift_pix weight = /*win*/1
+              vl_sift_pix weight = win
                 * mod
                 * vl_abs_f (1 - dbinx - rbinx)
                 * vl_abs_f (1 - dbiny - rbiny)
                 * vl_abs_f (1 - dbint - rbint) ;
 
-              if (verbose) VL_PRINTF("%d(%10.6f)",(NBP/2) * binyo + (NBP/2) * binxo  +  ((bint+dbint) % NBO)*binto + (biny+dbiny)*binyo + (binx+dbinx)*binxo,weight);
+              if (verbose) VL_PRINTF("[%3d](%10.6f)",(NBP/2) * binyo + (NBP/2) * binxo  +  ((bint+dbint) % NBO)*binto + (biny+dbiny)*binyo + (binx+dbinx)*binxo,weight);
               histsums ++;
 
               if ( minx == 0 )

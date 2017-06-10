@@ -78,8 +78,9 @@ transpose_descriptor (vl_sift_pix* dst, vl_sift_pix* src)
       int o  = BO * i + BP*BO * j  ;
       int op = BO * i + BP*BO * jp ;
       dst [op] = src[o] ;
-      for (t = 1 ; t < BO ; ++t)
+      for (t = 1 ; t < BO ; ++t) {
         dst [BO - t + op] = src [t + o] ;
+      }
     }
   }
 }
@@ -178,7 +179,7 @@ mexFunction(int nout, mxArray *out[],
     mexErrMsgTxt("I must be a matrix of class SINGLE") ;
   }
 
-  // Incoming image....M is height, N is width
+  // Incoming image....M is width, N is height
   data = (vl_sift_pix*) mxGetData (in[IN_I]) ;
   M    = mxGetM (in[IN_I]) ;
   N    = mxGetN (in[IN_I]) ;
@@ -268,6 +269,8 @@ mexFunction(int nout, mxArray *out[],
     }
   }
 
+  setverbose(verbose);
+
   /* -----------------------------------------------------------------
    *                                                            Do job
    * -------------------------------------------------------------- */
@@ -277,6 +280,9 @@ mexFunction(int nout, mxArray *out[],
     double            *frames = 0 ;
     void              *descr  = 0 ;
     int                nframes = 0, reserved = 0, i,j,q ;
+
+    FILE *pf;
+    int imagex, imagey;
 
     /* create a filter to process the image */
     // @param width    image width.
@@ -318,6 +324,22 @@ mexFunction(int nout, mxArray *out[],
                 force_orientations ? "yes" : "no") ;
     }
 
+
+    if (verbose > 1) {
+      pf = fopen("image.txt","w");
+
+      fprintf(pf,"%d %d\n", M,N);
+      for(imagex=0;imagex<M;imagex++) {
+        for (imagey=0;imagey<N;imagey++) {
+          vl_sift_pix pixel   = *( data+ imagey*(1*M) + imagex*(1) + 0 ) ;
+
+          fprintf(pf,"%d %d %6.4f 0\n",imagex, imagey,pixel);
+        }
+      }
+
+      fclose(pf);
+    }
+
     /* ...............................................................
      *                                             Process each octave
      * ............................................................ */
@@ -334,6 +356,8 @@ mexFunction(int nout, mxArray *out[],
                    vl_sift_get_octave_index (filt)) ;
       }
 
+
+
       /* Calculate the GSS for the next octave .................... */
       if (first) {
         err   = vl_sift_process_first_octave (filt, data) ;
@@ -349,6 +373,20 @@ mexFunction(int nout, mxArray *out[],
                   vl_sift_get_octave_index (filt));
       }
 
+      if (verbose > 1) {
+        pf = fopen("baseimageonscale.txt","w");
+
+        fprintf(pf,"%d %d\n", filt->octave_width,filt->octave_height);
+        for(imagex=0;imagex<filt->octave_width;imagex++) {
+          for (imagey=0;imagey<filt->octave_height;imagey++) {
+            vl_sift_pix pixel   = *( filt->octave + imagey*(1*filt->octave_width) + imagex*(1) + 0 ) ;
+
+            fprintf(pf,"%d %d %6.4f 0\n",imagex, imagey,pixel);
+          }
+        }
+
+        fclose(pf);
+      }
 
       /* Run detector ............................................. */
       if (nikeys < 0) {
@@ -434,7 +472,9 @@ mexFunction(int nout, mxArray *out[],
           if (nout > 1) {
             // The descriptor per se is calculated here.
             vl_sift_calc_keypoint_descriptor (filt, buf, k, angles [q]) ;
+            // This function is not doing anything at all.
             transpose_descriptor (rbuf, buf) ;
+
           }
 
           /* make enough room for all these keypoints and more */

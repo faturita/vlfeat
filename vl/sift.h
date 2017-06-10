@@ -90,6 +90,9 @@ typedef struct _VlSiftFilt
 
 } VlSiftFilt ;
 
+
+VL_EXPORT void setverbose(int verbose);
+
 /** @name Create and destroy
  ** @{
  **/

@@ -33,7 +33,8 @@ function h=vl_plotsiftdescriptor(d,f,varargin)
 % This file is part of the VLFeat library and is made available under
 % the terms of the BSD license (see the COPYING file).
 
-opts.magnificationFactor = 3.0 ;
+% Support of each bin is actually 2W (s = 1 -> 11+1+11(23) x 11+1+11(23)
+opts.magnificationFactor = floor(sqrt(2)*3*(4+1)/4); %3.0 ;
 opts.numSpatialBins = 4 ;
 opts.numOrientationBins = 8 ;
 opts.maxValue = 0 ;
@@ -77,6 +78,7 @@ if nargin > 1
     f(3:6,:) = bsxfun(@times, f(3,:), [c ; s ; -s ; c]) ;
   end
 
+  % Vl plot sift descriptor now supports rectangular grids.
   if size(f,1) == 5
     %assert(false) ;
     c = cos(f(5,:)) ;
@@ -108,12 +110,14 @@ end
 xall=[] ;
 yall=[] ;
 
+% Draw descriptor orientations.
 for k=1:K
   [x,y] = render_descr(d(:,k), opts.numSpatialBins, opts.numOrientationBins, opts.maxValue) ;
-  xall = [xall opts.magnificationFactor*f(3,k)*x + opts.magnificationFactor*f(5,k)*y + f(1,k)] ;
-  yall = [yall opts.magnificationFactor*f(4,k)*x + opts.magnificationFactor*f(6,k)*y + f(2,k)] ;
+  xall = [xall (opts.magnificationFactor*f(3,k))*x + (opts.magnificationFactor*f(5,k))*y + f(1,k)] ;
+  yall = [yall (opts.magnificationFactor*f(4,k))*x + (opts.magnificationFactor*f(6,k))*y + f(2,k)] ;
 end
 
+% Draw Box
 h=line(xall,yall) ;
 
 % --------------------------------------------------------------------
