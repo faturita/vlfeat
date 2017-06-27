@@ -681,6 +681,9 @@ int verbose=0;
 #define smoothfirstoctave 0
 #define avoidgaussianweighting 1
 
+int t[128] = {96,103,102,101,100,99,98,97,104,111,110,109,108,107,106,105,112,119,118,117,116,115,114,113,120,127,126,125,124,123,122,121,64,71,70,69,68,67,66,65,72,79,78,77,76,75,74,73,80,87,86,85,84,83,82,81,88,95,94,93,92,91,90,89,32,39,38,37,36,35,34,33,40,47,46,45,44,43,42,41,48,55,54,53,52,51,50,49,56,63,62,61,60,59,58,57,0,7,6,5,4,3,2,1,8,15,14,13,12,11,10,9,16,23,22,21,20,19,18,17,24,31,30,29,28,27,26,25};
+
+
 /** ------------------------------------------------------------------
  ** @internal
  ** @brief Fast @f$exp(-x)@f$ approximation
@@ -2112,13 +2115,11 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       /* wrt, with respect to */
       /* Rotation according to the scale (SBP) and descriptor angle) */
       // Standard orientation st0 is 1 and ct0 is zero.ceil((147+1)*0.1304)
-      //vl_sift_pix nx = ( ct0 * dx + st0 * dy) / SBPy ; // OJO
-      //vl_sift_pix ny = (-st0 * dx + ct0 * dy) / SBPx ;
+      vl_sift_pix nx = ( ct0 * dx + st0 * dy) / SBPy ; // OJO
+      vl_sift_pix ny = (-st0 * dx + ct0 * dy) / SBPx ;
 
-      vl_sift_pix nx = ( ct0 * dx + st0 * dy) / vl_ceil_f(0.1304*(dysupport+1)) ; // OJO
-      vl_sift_pix ny = (-st0 * dx + ct0 * dy) / vl_ceil_f(0.1304*(dxsupport+1)) ;
-
-
+      //vl_sift_pix nx = ( ct0 * dx + st0 * dy) / vl_ceil_f(0.1304*(dysupport+1)) ; // OJO
+      //vl_sift_pix ny = (-st0 * dx + ct0 * dy) / vl_ceil_f(0.1304*(dxsupport+1)) ;
       vl_sift_pix nt = NBO * theta / (2 * VL_PI) ;
 
       /* Get the Gaussian weight of the sample. The Gaussian window
@@ -2129,7 +2130,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       vl_sift_pix win = fast_expn
         ((nx*nx + ny*ny)/(2.0 * wsigma * wsigma)) ;
 
-      if (verbose) VL_PRINTF("(x,y,dxi,dyi,nx,ny) = (%3d,%3d,%3d,%3d,%10.6f,%10.6f)",dxsupport,dysupport, dxi,dyi,nx,ny);
+      if (verbose) VL_PRINTF("(xsupport,ysupport,x,y,dxi,dyi,nx,ny) = (%3d,%3d,%3d,%3d,%10.6f,%10.6f)",dxsupport,dysupport, dxi,dyi,nx,ny);
 
 
 
@@ -2157,11 +2158,13 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
 
       if (1)
       {
-        a = (int)(2.0*Wy/4.0+0.5);
-        b = (int)(2.0*Wx/4.0+0.5);
+        int sWy = dysupport/2;
+        int sWx = dxsupport/2;
+        a = (int)(2.0*sWy/4.0+0.5);
+        b = (int)(2.0*sWx/4.0+0.5);
 
-        c = (dyi+Wy)/a;
-        d = (dxi+Wx)/b;
+        c = (dyi+sWy)/a;
+        d = (dxi+sWx)/b;
 
         e= ((int)(theta * 180.0/VL_PI + 0.5))/45;
 
@@ -2169,7 +2172,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
 
         //if (verbose) VL_PRINTF("\ndyi = %3d, dxi = %3d, e = %d idx = %d",c,d,e,c*binxo + d*binyo+e);
 
-        if (mod>1)
+        if (mod>0)
         {
           //descr[c*binxo + d*binyo+e] += mod;
         }
@@ -2178,7 +2181,9 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
 
       //if (verbose) VL_PRINTF(" idx = %d", c*binxo + d*binyo+e);
 
-      if (verbose) VL_PRINTF(" dyi = %3d, dxi = %3d, e = %d idx = %d ",c,d,e,c*binxo + d*binyo+e);
+      int idx2 = (NBP/2) * binyo + (NBP/2) * binxo  +  ((bint+0) % NBO)*binto + (biny+0)*binyo + (binx+0)*binxo;
+
+      if (verbose) VL_PRINTF(" yi = %3d, xi = %3d, e = %d idx = %d,%d ",c,d,e,c*binxo + d*binyo+e, idx2);
 
       if (verbose) VL_PRINTF("\t");
       /* Distribute the current sample into the 8 adjacent bins*/
@@ -2199,6 +2204,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
                 * vl_abs_f (1 - dbiny - rbiny)
                 * vl_abs_f (1 - dbint - rbint) ;
 
+              if (verbose) VL_PRINTF("%d,%d\t",binx + dbinx,biny + dbiny );
               if (verbose) VL_PRINTF("[%3d](%10.6f)",(NBP/2) * binyo + (NBP/2) * binxo  +  ((bint+dbint) % NBO)*binto + (biny+dbiny)*binyo + (binx+dbinx)*binxo,weight);
               histsums ++;
 
@@ -2214,9 +2220,9 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
               if ( yi+dyi > maxy)
                 maxy = yi+dyi;
 
-              if (verbose) VL_PRINTF("X\t");
+              if (verbose) VL_PRINTF("\t");
               atd(binx+dbinx, biny+dbiny, (bint+dbint) % NBO) += weight ;
-            } else {if (verbose) VL_PRINTF("\t");}
+            } else {if (verbose) VL_PRINTF("%d,%d\t",binx + dbinx,biny + dbiny );}
           }
         }
       }

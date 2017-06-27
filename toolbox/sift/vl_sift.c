@@ -184,10 +184,6 @@ mexFunction(int nout, mxArray *out[],
   M    = mxGetM (in[IN_I]) ;
   N    = mxGetN (in[IN_I]) ;
 
-  if (verbose)
-    mexPrintf("vl_sift: Image size %d, %d, %d\n", sizeof(data), M,N);
-
-
   while ((opt = vlmxNextOption (in, nin, options, &next, &optarg)) >= 0) {
     switch (opt) {
 
@@ -270,6 +266,11 @@ mexFunction(int nout, mxArray *out[],
   }
 
   setverbose(verbose);
+
+  //  Incoming image....M is width, N is height
+  if (verbose)
+    mexPrintf("vl_sift: Image size %d, %d, %d\n", sizeof(data), M,N);
+
 
   /* -----------------------------------------------------------------
    *                                                            Do job
@@ -420,8 +421,8 @@ mexFunction(int nout, mxArray *out[],
                                  ikeys [framelength * i + 2]) ;
 
           if (framelength == 5) {
-            ik.sigmax =    ikeys [framelength * i + 2];
-            ik.sigmay =    ikeys [framelength * i + 3];
+            ik.sigmax =    ikeys [framelength * i + 3];
+            ik.sigmay =    ikeys [framelength * i + 2];
           } else {
             ik.sigmax = ik.sigma;
             ik.sigmay = ik.sigma;
@@ -472,9 +473,8 @@ mexFunction(int nout, mxArray *out[],
           if (nout > 1) {
             // The descriptor per se is calculated here.
             vl_sift_calc_keypoint_descriptor (filt, buf, k, angles [q]) ;
-            // This function is not doing anything at all.
+            // This is not a matrix transpose.  Its a permutation.
             transpose_descriptor (rbuf, buf) ;
-
           }
 
           /* make enough room for all these keypoints and more */
@@ -494,8 +494,8 @@ mexFunction(int nout, mxArray *out[],
            * image was the transpose of the actual image. */
           frames [5 * nframes + 0] = k -> y + 1 ;
           frames [5 * nframes + 1] = k -> x + 1 ;
-          frames [5 * nframes + 2] = k -> sigmax ;
-          frames [5 * nframes + 3] = k -> sigmay ;
+          frames [5 * nframes + 3] = k -> sigmax ;
+          frames [5 * nframes + 2] = k -> sigmay ;
           frames [5 * nframes + 4] = VL_PI / 2 - angles [q] ;
 
           if (nout > 1) {
