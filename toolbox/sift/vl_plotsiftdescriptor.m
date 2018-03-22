@@ -35,6 +35,7 @@ function h=vl_plotsiftdescriptor(d,f,varargin)
 
 % Support of each bin is actually 2W (s = 1 -> 11+1+11(23) x 11+1+11(23)
 opts.magnificationFactor = floor(sqrt(2)*3*(4+1)/4); %3.0 ;
+opts.magnificationFactor = sqrt(2)*3*(4+1)/4;
 opts.numSpatialBins = 4 ;
 opts.numOrientationBins = 8 ;
 opts.maxValue = 0 ;
@@ -87,6 +88,7 @@ if nargin > 1
     ft(3:4,:) = bsxfun(@times, f(3,:), [c ; s]) ;
     ft(5:6,:) = bsxfun(@times, f(4,:), [-s; c]);
     f = ft;
+
   end
 
   if(~isempty(f) & size(f,2) ~= size(d,2))
@@ -173,5 +175,11 @@ yh = [y(:,1)' ; y(:,end)' ; nans] ;
 xv = [x(1,:) ; x(end,:) ; nans] ;
 yv = [y(1,:) ; y(end,:) ; nans] ;
 
-x=[xstars(:)' xh(:)' xv(:)'] ;
-y=[ystars(:)' yh(:)' yv(:)'] ;
+onlygrid=true;
+if (onlygrid)
+    x=[xh(:)' xv(:)'] ;
+    y=[yh(:)' yv(:)'] ;
+else
+    x=[xstars(:)' xh(:)' xv(:)'] ;
+    y=[ystars(:)' yh(:)' yv(:)'] ;
+end
