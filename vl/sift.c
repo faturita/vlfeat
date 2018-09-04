@@ -2014,6 +2014,8 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   int counter = 0;
   float total = 0;
   int patch=0;
+  int dysupport;
+  int dxsupport;
 
   /* check bounds */
   if(k->o  != f->o_cur        ||
@@ -2090,8 +2092,8 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   histsums = 0;
   counter = 0;
 
-  int dysupport = VL_MIN (+ Wy, h - yi - 2) - VL_MAX (- Wy, 1 - yi    ) ;
-  int dxsupport = VL_MIN (+ Wx, w - xi - 2) - VL_MAX (- Wx, 1 - xi    ) ;
+  dysupport = VL_MIN (+ Wy, h - yi - 2) - VL_MAX (- Wy, 1 - yi    ) ;
+  dxsupport = VL_MIN (+ Wx, w - xi - 2) - VL_MAX (- Wx, 1 - xi    ) ;
 
   for(dyi =  VL_MAX (- Wy, 1 - yi    ) ;
       dyi <= VL_MIN (+ Wy, h - yi - 2) ; ++ dyi) {
@@ -2160,6 +2162,16 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       int         dbiny ;
       int         dbint ;
       int a,b,c,d,e;
+      int idx2;
+
+      if (verbose) VL_PRINTF("(xsupport,ysupport,x,y,dxi,dyi,nx,ny) = (%3d,%3d,%3d,%3d,%10.6f,%10.6f)",dxsupport,dysupport, dxi,dyi,nx,ny);
+
+
+
+      if (avoidgaussianweighting)
+      {
+        win = 1;
+      }
 
       counter++;
       if (verbose) VL_PRINTF("x,y = (%3d,%3d) Mod = %10.6f ; Angle = %10.6f ; Theta = %10.6f", xi+dxi, yi+dyi,mod ,angle* 180.0/VL_PI,theta* 180.0/VL_PI);
@@ -2190,7 +2202,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
 
       //if (verbose) VL_PRINTF(" idx = %d", c*binxo + d*binyo+e);
 
-      int idx2 = (NBP/2) * binyo + (NBP/2) * binxo  +  ((bint+0) % NBO)*binto + (biny+0)*binyo + (binx+0)*binxo;
+      idx2 = (NBP/2) * binyo + (NBP/2) * binxo  +  ((bint+0) % NBO)*binto + (biny+0)*binyo + (binx+0)*binxo;
 
       if (verbose) VL_PRINTF(" yi = %3d, xi = %3d, e = %d idx = %d,%d ",c,d,e,c*binxo + d*binyo+e, idx2);
 
