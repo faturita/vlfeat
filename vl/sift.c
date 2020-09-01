@@ -2027,6 +2027,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
      si    >  f->s_max - 2     )
     return ;
 
+
   /* synchronize gradient buffer */
   update_gradient (f) ;
 
@@ -2048,7 +2049,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
   dpt = descr + (NBP/2) * binyo + (NBP/2) * binxo ;
 
 
-  if (verbose>0) {
+  if (verbose > 0) {
     pf = fopen("grads.txt","w");
     fprintf(pf,"%d %d\n",w,h);
     for(oky=0;oky<h;oky++) {
@@ -2117,7 +2118,7 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
       /* wrt, with respect to */
       /* Rotation according to the scale (SBP) and descriptor angle) */
       // Standard orientation st0 is 1 and ct0 is zero.ceil((147+1)*0.1304)
-      vl_sift_pix nx = ( ct0 * dx + st0 * dy) / SBPy ;
+      vl_sift_pix nx = ( ct0 * dx + st0 * dy) / SBPy ; // OJO
       vl_sift_pix ny = (-st0 * dx + ct0 * dy) / SBPx ;
 
       //vl_sift_pix nx = ( ct0 * dx + st0 * dy) / vl_ceil_f(0.1304*(dysupport+1)) ; // OJO
@@ -2128,27 +2129,11 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
        * has a standard deviation equal to NBP/2. Note that dx and dy
        * are in the normalized frame, so that -NBP/2 <= dx <=
        * NBP/2. */
-      vl_sift_pix const wsigma = (f->windowSize)*1/5.0 ;
+      vl_sift_pix const wsigma = f->windowSize * 1/2.0 ;
       //vl_sift_pix win = fast_expn
-        //((nx*nx + ny*ny)/(2.0 * wsigma * wsigma)) ;
+      //  ((nx*nx + ny*ny)/(2.0 * wsigma * wsigma)) ;
       vl_sift_pix win = fast_expn
         ((nx*nx)/(2.0 * wsigma * wsigma)) ;
-
-      /** The coordinates are shifted here because of the angle, so nx is height
-      and ny is width. **/
-      /** La idea detras de esto es que baje el peso de los gradientes que estan
-      mas "al costado" del parche del descriptor, y le de mas peso a los del centro.
-      De esta manera la forma de la senial a los costados se hace menos importante
-      (mas alejado del evento que se esta estudiando) **/
-
-      if (verbose) VL_PRINTF("(xsupport,ysupport,x,y,dxi,dyi,nx,ny,win) = (%3d,%3d,%3d,%3d,%10.6f,%10.6f,%10.6f)",dxsupport,dysupport, dxi,dyi,nx,ny,win);
-
-
-
-      if (avoidgaussianweighting)
-      {
-        win = 1;
-      }
 
       /* This single sample will be distributed in 8 adjacent bins.
          We start from the ``lower-left'' bin. */
@@ -2359,6 +2344,8 @@ vl_sift_calc_keypoint_descriptor (VlSiftFilt *f,
  ** In practice, both @f$ o(\sigma) @f$ and @f$ is(\sigma) @f$ are
  ** clamped to their feasible range as determined by the SIFT filter
  ** parameters.
+ **
+ ** @FIXME, the BIN center location depends on the scale.  This should be modified in this implementation.
  **/
 
 VL_EXPORT
